@@ -71,8 +71,9 @@ public class SplunkLogHandlerRecorder {
                 new PatternFormatter(config.format()));
         applyFilter(discoveredLogComponents, config.filter(), splunkLogHandler);
 
+        boolean autoFlushEvents = config.batchInterval().isZero();
         return config.async().enable()
-                ? createAsyncHandler(config.async(), config.level(), splunkLogHandler)
+                ? createAsyncHandler(config.async(), config.level(), autoFlushEvents, splunkLogHandler)
                 : splunkLogHandler;
     }
 
@@ -144,7 +145,7 @@ public class SplunkLogHandlerRecorder {
         return metadata;
     }
 
-    private SplunkLogHandler createSplunkLogHandler(HttpEventCollectorSender sender,
+    private static SplunkLogHandler createSplunkLogHandler(HttpEventCollectorSender sender,
             SplunkHandlerConfig config) {
         return new SplunkLogHandler(sender,
                 config.includeException(),
@@ -154,11 +155,13 @@ public class SplunkLogHandlerRecorder {
                 config.maxRetries());
     }
 
-    private static AsyncHandler createAsyncHandler(AsyncConfig asyncConfig, Level level, Handler handler) {
+    private static AsyncHandler createAsyncHandler(AsyncConfig asyncConfig, Level level, boolean autoFlush,
+            Handler handler) {
         final AsyncHandler asyncHandler = new AsyncHandler(asyncConfig.queueLength());
         asyncHandler.setOverflowAction(asyncConfig.overflow());
         asyncHandler.addHandler(handler);
         asyncHandler.setLevel(level);
+        asyncHandler.setAutoFlush(autoFlush);
         return asyncHandler;
     }
 
